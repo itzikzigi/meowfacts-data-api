@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import ast, pathlib; [ast.parse\\(p.read_text\\(encoding='utf-8'\\)\\) for p in pathlib.Path\\('.'\\).rglob\\('*.py'\\) if '__pycache__' not in str\\(p\\)]; print\\('syntax ok'\\)\")",
+      "Bash(python -c \"from meowfacts.collector import FactsCollector; from meowfacts.writer import DatasetWriter; from meowfacts.client import MeowFactsClient; from meowfacts.models.api import ApiFactResponse, ApiOptionsResponse, LanguageOption; from meowfacts.models.dataset import FactRecord, Dataset; from utils.logger import configure_logging, get_logger; print\\('imports ok'\\)\")",
+      "Bash(python main.py --help)",
+      "Bash(python main.py --languages eng --output /tmp/smoke.json -v)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/smoke.json', encoding='utf-8'\\)\\); print\\('schema_version:', d['schema_version']\\); print\\('language_count:', d['language_count']\\); print\\('fact_count:', d['fact_count']\\); print\\('first fact:', d['facts'][0]['text'][:60] if d['facts'] else '\\(none\\)'\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\(r'C:\\\\\\\\Users\\\\\\\\Itzik\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\smoke.json', encoding='utf-8'\\)\\); print\\('schema_version:', d['schema_version']\\); print\\('language_count:', d['language_count']\\); print\\('fact_count:', d['fact_count']\\); print\\('first fact:', d['facts'][0]['text'][:80]\\)\")",
+      "Bash(python -m meowfacts.main --languages eng --output smoke.json --force -v)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('smoke.json', encoding='utf-8'\\)\\); print\\('schema_version:', d['schema_version'], '| language_count:', d['language_count'], '| fact_count:', d['fact_count']\\); print\\('first fact:', d['facts'][0]['text'][:70]\\)\")",
+      "Bash(python src/main.py --languages eng --output smoke.json --force -v)",
+      "Bash(python src/main.py --languages eng --output smoke.json --force)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

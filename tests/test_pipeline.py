@@ -63,3 +63,25 @@ def test_all_languages_failing_skips_write(tmp_path: Path):
     p._client.get_facts.side_effect = RuntimeError("boom")
     p.run(languages=["eng", "esp"], output_path=tmp_path / "out.json")
     p._writer.write.assert_not_called()
+
+
+def test_empty_discovered_language_list_skips_write(tmp_path: Path):
+    """Non-exception zero-records path: `/options` succeeds but returns no
+    languages. Must still skip the write — otherwise an empty snapshot dated
+    today would block the next retry."""
+    p = _pipeline_with_mocked_io()
+    options = MagicMock()
+    options.get_languages.return_value = []
+    p._client.get_options.return_value = options
+    p.run(languages=None, output_path=tmp_path / "out.json")
+    p._client.get_facts.assert_not_called()
+    p._writer.write.assert_not_called()
+
+
+def test_all_languages_returning_empty_data_skips_write(tmp_path: Path):
+    """Non-exception zero-records path: every language returns 200 with an
+    empty `data` array. Collects zero records → must skip the write."""
+    p = _pipeline_with_mocked_io()
+    p._client.get_facts.return_value = ApiFactResponse(data=[])
+    p.run(languages=["eng", "esp"], output_path=tmp_path / "out.json")
+    p._writer.write.assert_not_called()

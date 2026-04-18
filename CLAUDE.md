@@ -39,7 +39,7 @@ meowfacts_pipeline/
         ├── extract/            # E: pull raw data from external sources.
         │   └── client.py       # MeowFactsClient — HTTP with retry/backoff. Returns wire shapes.
         ├── transform/          # T: shape raw data into output-contract objects. Pure, no I/O.
-        │   └── transformer.py  # FactsTransformer — hashing, record & dataset assembly.
+        │   └── transformer.py  # FactsTransformer — record & dataset assembly from wire shapes.
         ├── load/               # L: persist output-contract objects.
         │   └── writer.py       # DatasetWriter — atomic JSON write.
         ├── models/             # One file per data group. Never mix unrelated shapes.
@@ -113,8 +113,7 @@ which concern it belongs to.
    - `extract/client.py` only talks to the API and returns parsed wire shapes.
      It knows nothing about `FactRecord` or `Dataset`.
    - `transform/transformer.py` only shapes wire data into output-contract
-     objects (hashing, record & dataset assembly). It does no network and no
-     disk I/O.
+     objects (record & dataset assembly). It does no network and no disk I/O.
    - `load/writer.py` only persists a `Dataset` that is already fully built.
      It doesn't compute fields, doesn't call the API.
    - `pipeline.py` sequences E → T → L. It must not do the work of any stage
@@ -182,6 +181,27 @@ doesn't solve; let the pipeline mirror upstream semantics.
 
 Adding fields is safe; renaming, removing, or changing the type/semantics of
 a field is a breaking change and needs `schema_version` bumped.
+
+## Testing
+
+Tests live in `tests/` (flat layout, one file per module under test) and run
+with `pytest` from the project root. `pytest.ini` puts `src/` on `pythonpath`,
+so tests import the package the same way `main.py` does.
+
+What to test and what to skip:
+
+- **Test what has logic.** Transform (pure), pipeline orchestration
+  (fail-soft + branch paths), writer (atomic rename, unicode), client response
+  parsing, CLI freshness check (error-swallowing).
+- **Don't test pydantic models themselves** — they're declarative, so you'd be
+  re-testing pydantic. Test them indirectly via the code that builds them.
+- **Don't test the Logger wrapper** — it's a one-line delegation to stdlib.
+- **Don't hit the network.** Client tests mock `_session`; pipeline tests mock
+  `_client` and `_writer` but keep the real transformer (pure = safe to run).
+- **Don't reassert what types already guarantee.** If a function returns
+  `list[FactRecord]`, a test that checks `isinstance(x, list)` is noise.
+
+Run: `python -m pytest` or just `pytest`.
 
 ## Scaling notes (when this gets bigger)
 

@@ -5,7 +5,8 @@ A scheduled Python pipeline that extracts every cat fact in every supported lang
 ## Requirements
 
 - Python 3.10+
-- Dependencies: `pydantic>=2.0`, `requests>=2.31.0`, `urllib3>=2.0`
+- Runtime dependencies: `pydantic>=2.0`, `pydantic-settings>=2.0`, `requests>=2.31.0`, `urllib3>=2.0`
+- Test dependency: `pytest>=8.0`
 
 ```bash
 pip install -r requirements.txt
@@ -13,33 +14,65 @@ pip install -r requirements.txt
 
 ## Usage
 
+Run from the project root. Python adds `src/` to `sys.path` automatically, so `import meowfacts` resolves without extra setup.
+
 ```bash
 # Fetch all languages, write to ./output/meowfacts.json
-python main.py
+python src/main.py
 
 # Custom output path
-python main.py --output /tmp/facts.json
+python src/main.py --output /tmp/facts.json
 
-# Fetch a subset of languages
-python main.py --languages eng-us esp-es por-br
+# Fetch a subset of languages (whatever codes the /options endpoint returns)
+python src/main.py --languages eng esp
+
+# Re-fetch even if today's snapshot already exists
+python src/main.py --force
 
 # Verbose logging (DEBUG level)
-python main.py -v
+python src/main.py -v
 ```
 
 ## Project layout
 
+The package is structured as ETL — each stage (extract, transform, load) lives in its own folder, and `pipeline.py` sequences them without implementing any stage itself.
+
 ```
 meowfacts-data-api/
-├── main.py                 # CLI entry point
 ├── requirements.txt
-└── meowfacts/
-    ├── config.py           # Settings (base URL, timeouts, retries)
-    ├── models.py           # Pydantic models: ApiFactResponse, FactRecord, Dataset
-    ├── client.py           # HTTP client with retry/backoff
-    ├── collector.py        # Orchestrates language discovery and fact fetching
-    └── writer.py           # Atomic JSON writer
+├── pytest.ini                     # test config (pythonpath=src, testpaths=tests)
+├── output/                        # produced by src/main.py; gitignored
+├── tests/                         # pytest tests, one file per module under test
+└── src/
+    ├── main.py                    # CLI entry point — only main() + __main__ guard
+    └── meowfacts/
+        ├── pipeline.py            # Pipeline — orchestrates E → T → L
+        ├── cli.py                 # parse_args, already_fetched_today, DEFAULT_OUTPUT
+        ├── config.py              # Settings (base URL, timeouts, retries)
+        ├── extract/
+        │   └── client.py          # MeowFactsClient — HTTP with retry/backoff
+        ├── transform/
+        │   └── transformer.py     # FactsTransformer — record & dataset assembly (pure)
+        ├── load/
+        │   └── writer.py          # DatasetWriter — atomic JSON write
+        ├── models/
+        │   ├── api.py             # ApiFactResponse, ApiOptionsResponse (wire shapes)
+        │   └── dataset.py         # FactRecord, Dataset (output contract)
+        └── utils/
+            └── logger.py          # Logger class — shared, configurable
 ```
+
+See `CLAUDE.md` for design principles (≤150 lines/file, strict stage boundaries, class-based shared clients, etc.).
+
+## Testing
+
+```bash
+pytest                              # run the full suite
+pytest tests/test_transformer.py    # a single file
+pytest -k pipeline                  # filter by name
+```
+
+Tests mock external I/O (HTTP, disk, filesystem timestamps) — the full suite runs in a couple of seconds with no network required.
 
 ## Output format
 
@@ -103,7 +136,7 @@ The pipeline is stateless — each run produces a full snapshot. Drop it into an
 
 **Cron (daily at 09:00):**
 ```cron
-0 9 * * * cd /path/to/meowfacts-data-api && python main.py
+0 9 * * * cd /path/to/meowfacts-data-api && python src/main.py
 ```
 
 **GitHub Actions:**
@@ -120,7 +153,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: python main.py --output output/meowfacts.json
+      - run: python src/main.py --output output/meowfacts.json
       - uses: actions/upload-artifact@v4
         with:
           name: meowfacts

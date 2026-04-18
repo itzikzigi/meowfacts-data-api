@@ -208,3 +208,6 @@ __marimo__/
 
 # Pipeline output — produced by src/main.py on every run; not source.
 output/
+
+# Claude Code local project state
+.claude/

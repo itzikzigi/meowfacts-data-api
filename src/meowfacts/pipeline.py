@@ -12,10 +12,10 @@ class Pipeline:
     """Orchestrates Extract → Transform → Load.
 
     Sequences the stages but implements none of them. Fails soft on per-language
-    errors (logs and skips); if discovery itself fails, proceeds with an empty
-    language list and writes an empty dataset — the caller decides what to do.
-    Swap any stage (different writer for Parquet, different transformer) without
-    touching this file.
+    errors (logs and skips); if no records are collected at all, skips the write
+    entirely so the freshness check doesn't block the next retry. Swap any stage
+    (different writer for Parquet, different transformer) without touching this
+    file.
     """
 
     def __init__(self, settings: Settings | None = None):
@@ -29,6 +29,12 @@ class Pipeline:
         if languages is None:
             languages = self._discover_languages()
         records = self._collect_records(languages)
+        if not records:
+            self.logger.error(
+                "No facts collected; skipping write so the freshness check won't "
+                "block the next retry."
+            )
+            return
         dataset = self._transformer.build_dataset(records, source=self._settings.base_url)
         self._writer.write(dataset, output_path)
 

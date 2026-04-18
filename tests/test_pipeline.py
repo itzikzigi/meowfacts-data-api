@@ -47,11 +47,19 @@ def test_failing_language_is_skipped_and_others_continue(tmp_path: Path):
     assert dataset.language_count == 1
 
 
-def test_discovery_failure_produces_empty_dataset(tmp_path: Path):
+def test_discovery_failure_skips_write(tmp_path: Path):
+    """If discovery fails we collect zero records — the writer must NOT be
+    called, otherwise an empty snapshot dated today would block the next run's
+    freshness check from retrying."""
     p = _pipeline_with_mocked_io()
     p._client.get_options.side_effect = RuntimeError("network down")
     p.run(languages=None, output_path=tmp_path / "out.json")
-    dataset = p._writer.write.call_args.args[0]
-    assert dataset.fact_count == 0
-    assert dataset.language_count == 0
     p._client.get_facts.assert_not_called()
+    p._writer.write.assert_not_called()
+
+
+def test_all_languages_failing_skips_write(tmp_path: Path):
+    p = _pipeline_with_mocked_io()
+    p._client.get_facts.side_effect = RuntimeError("boom")
+    p.run(languages=["eng", "esp"], output_path=tmp_path / "out.json")
+    p._writer.write.assert_not_called()

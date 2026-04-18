@@ -126,7 +126,8 @@ New locales published by the upstream API will appear automatically without any 
 |---|---|
 | Transient HTTP error (5xx, 429) | Retried up to 3 times with exponential backoff |
 | Single language fetch fails after retries | Skipped with a `WARNING` log; remaining languages continue |
-| `/options` endpoint unreachable (API totally down) | `ERROR` logged; produces an empty dataset (`fact_count: 0`); exits 0 |
+| `/options` endpoint unreachable (API totally down) | `ERROR` logged; **no file is written** so the freshness check doesn't block the next retry; exits 0 |
+| All language fetches fail | `ERROR` logged; no file is written (same reason as above) |
 | `--languages` passed and API is down | Skips discovery; each language is still attempted individually |
 | Unexpected failure (disk full, bad path, etc.) | `CRITICAL` logged with full traceback; exits 1 |
 
